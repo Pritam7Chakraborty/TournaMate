@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-function CreateTournamentModal({ onClose }) {
+function CreateTournamentModal({ onClose,onTournamentCreate }) {
   const [tournamentName, setTournamentName] = useState("");
 
   const handleSubmit = (e) => {
@@ -9,7 +9,7 @@ function CreateTournamentModal({ onClose }) {
       alert("Please enter a tournament name.");
       return;
     }
-    console.log("Creating tournament: ", tournamentName);
+    onTournamentCreate(tournamentName);
     onClose();
   };
   return (

@@ -4,16 +4,16 @@ import Navbar from "./components/Navbar.jsx";
 import HomePage from "./pages/HomePage.jsx";
 import LoginPage from "./pages/LoginPage.jsx";
 import TournamentDashboardPage from "./pages/TournamentDashboardPage.jsx";
+import TournamentDetailPage from "./pages/TournamentDetailPage.jsx";
 
 function App() {
   const [count, setCount] = useState(0);
 
   return (
     <>
-      <div>
+      <div className="bg-gray-900 min-h-screen">
         <Navbar />
-
-        <main>
+        <main className="container mx-auto p-6">
           <Outlet />
         </main>
       </div>
@@ -27,6 +27,10 @@ function AppRoutes() {
       <Route path="/" element={<App />}>
         <Route index element={<HomePage />} />
         <Route path="tournaments" element={<TournamentDashboardPage />} />
+        <Route
+          path="tournaments/:tournamentId"
+          element={<TournamentDetailPage />}
+        />
         <Route path="login" element={<LoginPage />} />
       </Route>
     </Routes>
