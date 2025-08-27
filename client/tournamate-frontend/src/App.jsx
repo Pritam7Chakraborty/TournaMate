@@ -26,11 +26,11 @@ function AppRoutes() {
     <Routes>
       <Route path="/" element={<App />}>
         <Route index element={<HomePage />} />
-        <Route path="tournaments" element={<TournamentDashboardPage />} />
         <Route
           path="tournaments/:tournamentId"
           element={<TournamentDetailPage />}
         />
+        <Route path="tournaments" element={<TournamentDashboardPage />} />
         <Route path="login" element={<LoginPage />} />
       </Route>
     </Routes>

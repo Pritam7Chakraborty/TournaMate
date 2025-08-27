@@ -1,8 +1,13 @@
-import { useState } from "react";
+import { useState,useEffect } from "react";
 
-function CreateTournamentModal({ onClose,onTournamentCreate }) {
+function CreateTournamentModal({ onClose,onTournamentCreate, isEditMode = false, initialData = null }) {
   const [tournamentName, setTournamentName] = useState("");
 
+  useEffect(()=>{
+    if (isEditMode && initialData) {
+      setTournamentName(initialData.name);
+    }
+  },[isEditMode,initialData]);
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!tournamentName.trim()) {
@@ -15,7 +20,7 @@ function CreateTournamentModal({ onClose,onTournamentCreate }) {
   return (
     <div className="fixed inset-0 bg-black/50 flex justify-center items-center">
       <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
-        <h3 className="text-xl font-bold mb-4">Create New Tournament</h3>
+        <h3 className="text-xl font-bold mb-4">{isEditMode ? 'Edit Tournament' : 'Create New Tournament'}</h3>
         <form onSubmit={handleSubmit}>
           <div className="mb-4">
             <label
@@ -46,7 +51,7 @@ function CreateTournamentModal({ onClose,onTournamentCreate }) {
               type="submit"
               className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-md"
             >
-              Create
+              {isEditMode ? 'Save Changes' : 'Create'}
             </button>
           </div>
         </form>
