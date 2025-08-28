@@ -1,26 +1,49 @@
-import { useState,useEffect } from "react";
+import { useState, useEffect } from "react";
 
-function CreateTournamentModal({ onClose,onTournamentCreate, isEditMode = false, initialData = null }) {
+function CreateTournamentModal({
+  onClose,
+  onTournamentCreate,
+  isEditMode = false,
+  initialData = null,
+}) {
   const [tournamentName, setTournamentName] = useState("");
+  const [type, setType] = useState("League");
+  const [participants, setParticipants] = useState("");
 
-  useEffect(()=>{
+  useEffect(() => {
     if (isEditMode && initialData) {
       setTournamentName(initialData.name);
+      setType(initialData.type);
+      setParticipants(initialData.participants.join("\n"));
     }
-  },[isEditMode,initialData]);
+  }, [isEditMode, initialData]);
+
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!tournamentName.trim()) {
       alert("Please enter a tournament name.");
       return;
     }
-    onTournamentCreate(tournamentName);
+    const participantsArray = participants
+      .split("\n")
+      .map((p) => p.trim())
+      .filter((p) => p);
+      
+    // The key is renamed from 'tournamentName' to 'name' here
+    onTournamentCreate({
+      name: tournamentName,
+      type,
+      participants: participantsArray,
+    });
     onClose();
   };
+
   return (
     <div className="fixed inset-0 bg-black/50 flex justify-center items-center">
       <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
-        <h3 className="text-xl font-bold mb-4">{isEditMode ? 'Edit Tournament' : 'Create New Tournament'}</h3>
+        <h3 className="text-xl font-bold mb-4">
+          {isEditMode ? "Edit Tournament" : "Create New Tournament"}
+        </h3>
         <form onSubmit={handleSubmit}>
           <div className="mb-4">
             <label
@@ -39,6 +62,43 @@ function CreateTournamentModal({ onClose,onTournamentCreate, isEditMode = false,
             />
           </div>
 
+          {/* Type Dropdown */}
+          <div className="mb-4">
+            <label
+              htmlFor="tournamentType"
+              className="block text-gray-700 text-sm font-bold mb-2"
+            >
+              Type
+            </label>
+            <select
+              id="tournamentType"
+              value={type}
+              onChange={(e) => setType(e.target.value)}
+              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+            >
+              <option>League</option>
+              <option>Knockout</option>
+              <option>League + Knockout</option>
+            </select>
+          </div>
+
+          {/* Participants Textarea */}
+          <div className="mb-4">
+            <label
+              htmlFor="participants"
+              className="block text-gray-700 text-sm font-bold mb-2"
+            >
+              Participants (one per line)
+            </label>
+            <textarea
+              id="participants"
+              value={participants}
+              onChange={(e) => setParticipants(e.target.value)}
+              rows="5"
+              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+            ></textarea>
+          </div>
+
           <div className="mt-6 flex justify-end gap-4">
             <button
               type="button"
@@ -51,7 +111,7 @@ function CreateTournamentModal({ onClose,onTournamentCreate, isEditMode = false,
               type="submit"
               className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-md"
             >
-              {isEditMode ? 'Save Changes' : 'Create'}
+              {isEditMode ? "Save Changes" : "Create"}
             </button>
           </div>
         </form>
@@ -59,4 +119,5 @@ function CreateTournamentModal({ onClose,onTournamentCreate, isEditMode = false,
     </div>
   );
 }
+
 export default CreateTournamentModal;

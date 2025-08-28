@@ -7,6 +7,16 @@ const TournamentSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    type: {
+      type: String,
+      required: true,
+      enum: ["League", "Knockout", "League + Knockout"],
+      default: "League",
+    },
+    participants: {
+      type: [String],
+      default: [],
+    },
   },
   {
     timestamps: true,

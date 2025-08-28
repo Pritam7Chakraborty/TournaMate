@@ -19,14 +19,14 @@ function TournamentDashboardPage() {
     fetchTournaments();
   }, []);
 
-  const handleAddTournament = async (tournamentName) => {
+  const handleAddTournament = async (tournamentData) => {
     try {
       const response = await fetch("http://localhost:3000/api/tournaments", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ name: tournamentName }),
+        body: JSON.stringify(tournamentData),
       });
       const newTournamentFromDB = await response.json();
 

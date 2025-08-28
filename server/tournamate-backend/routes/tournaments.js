@@ -14,8 +14,11 @@ router.get("/", async (req, res) => {
 
 router.post("/", async (req, res) => {
   try {
+    const { name, type, participants } = req.body;
     const newTournament = new Tournament({
-      name: req.body.name,
+      name,
+      type,
+      participants,
     });
 
     const tournament = await newTournament.save();
@@ -41,6 +44,29 @@ router.get("/:id", async (req, res) => {
   }
 });
 
+router.put("/:id", async (req, res) => {
+  try {
+    const { name, type, participants } = req.body;
+    const updateFields = { name, type, participants };
+
+    // Find the tournament by its ID and update it
+    const updatedTournament = await Tournament.findByIdAndUpdate(
+      req.params.id,
+      updateFields,
+      { new: true, runValidators: true } // Options
+    );
+
+    if (!updatedTournament) {
+      return res.status(404).json({ msg: "Tournament not found" });
+    }
+
+    res.json(updatedTournament); // Send the updated tournament back
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send("Server Error");
+  }
+});
+
 router.delete("/:id", async (req, res) => {
   try {
     const tournament = await Tournament.findById(req.params.id);
@@ -57,27 +83,4 @@ router.delete("/:id", async (req, res) => {
     res.status(500).send("Server Error");
   }
 });
-
-router.put("/:id", async (req, res) => {
-  try {
-    const { name } = req.body;
-
-    // Find the tournament by its ID and update it
-    const updatedTournament = await Tournament.findByIdAndUpdate(
-      req.params.id,
-      { name: name },
-      { new: true, runValidators: true } // Options
-    );
-
-    if (!updatedTournament) {
-      return res.status(404).json({ msg: "Tournament not found" });
-    }
-
-    res.json(updatedTournament); // Send the updated tournament back
-  } catch (err) {
-    console.error(err.message);
-    res.status(500).send("Server Error");
-  }
-});
-
 module.exports = router;
