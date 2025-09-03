@@ -1,4 +1,4 @@
-require("dotenv").config();
+require('dotenv').config();
 const express = require("express");
 const cors = require("cors");
 const mongoose = require("mongoose");
@@ -18,6 +18,7 @@ app.use(express.json());
 
 // --- Routes ---
 app.use('/api/tournaments', require('./routes/tournaments'));
+app.use('/api/auth', require('./routes/auth'));
 
 // --- Server Start ---
 app.listen(PORT, () => {

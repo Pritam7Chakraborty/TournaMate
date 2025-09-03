@@ -5,6 +5,7 @@ import HomePage from "./pages/HomePage.jsx";
 import LoginPage from "./pages/LoginPage.jsx";
 import TournamentDashboardPage from "./pages/TournamentDashboardPage.jsx";
 import TournamentDetailPage from "./pages/TournamentDetailPage.jsx";
+import SignupPage from './pages/SignupPage';
 
 function App() {
   const [count, setCount] = useState(0);
@@ -32,6 +33,7 @@ function AppRoutes() {
         />
         <Route path="tournaments" element={<TournamentDashboardPage />} />
         <Route path="login" element={<LoginPage />} />
+        <Route path="signup" element={<SignupPage />} /> 
       </Route>
     </Routes>
   );
