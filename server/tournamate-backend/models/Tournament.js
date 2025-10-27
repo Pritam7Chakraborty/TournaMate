@@ -11,6 +11,14 @@ const MatchSchema = new mongoose.Schema({
 
 const TournamentSchema = new mongoose.Schema(
   {
+    // --- THIS IS THE CRITICAL FIELD TO ADD ---
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true,
+    },
+    // --- (End of addition) ---
+
     name: {
       type: String,
       required: true,
@@ -27,7 +35,6 @@ const TournamentSchema = new mongoose.Schema(
       enum: [1, 2],
       default: 1,
     },
-    
     participants: {
       type: [String],
       default: [],

@@ -1,14 +1,13 @@
 import { Routes, Route, Outlet } from "react-router-dom";
-import { useState } from "react";
 import Navbar from "./components/Navbar.jsx";
 import HomePage from "./pages/HomePage.jsx";
 import LoginPage from "./pages/LoginPage.jsx";
 import TournamentDashboardPage from "./pages/TournamentDashboardPage.jsx";
 import TournamentDetailPage from "./pages/TournamentDetailPage.jsx";
 import SignupPage from './pages/SignupPage';
+import ProtectedRoute from "./components/ProtectedRoute.jsx"; // <-- 1. Import the guard
 
 function App() {
-  const [count, setCount] = useState(0);
 
   return (
     <>
@@ -26,14 +25,28 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={<App />}>
+        {/* --- Public Routes --- */}
         <Route index element={<HomePage />} />
-        <Route
-          path="tournaments/:tournamentId"
-          element={<TournamentDetailPage />}
-        />
-        <Route path="tournaments" element={<TournamentDashboardPage />} />
         <Route path="login" element={<LoginPage />} />
         <Route path="signup" element={<SignupPage />} /> 
+
+        {/* --- Protected Routes --- */}
+        <Route
+          path="tournaments/:tournamentId"
+          element={
+            <ProtectedRoute> {/* <-- 2. Wrap the route */}
+              <TournamentDetailPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route 
+          path="tournaments" 
+          element={
+            <ProtectedRoute> {/* <-- 3. Wrap this route too */}
+              <TournamentDashboardPage />
+            </ProtectedRoute>
+          } 
+        />
       </Route>
     </Routes>
   );

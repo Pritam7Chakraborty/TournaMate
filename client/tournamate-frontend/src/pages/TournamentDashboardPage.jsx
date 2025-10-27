@@ -1,19 +1,24 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+// Import the specific api functions we'll use
+import { api, apiPost, apiDelete } from '../utils/api'; 
 import CreateTournamentModal from "../components/CreateTournamentModal";
 
 function TournamentDashboardPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [tournaments, setTournaments] = useState([]);
+  const [error, setError] = useState(null); // <-- Add error state
 
   useEffect(() => {
     const fetchTournaments = async () => {
       try {
-        const response = await fetch("http://localhost:3000/api/tournaments");
-        const data = await response.json();
+        setError(null); // <-- Reset error
+        // Use the new 'api' function. It automatically sends the token.
+        const data = await api("/tournaments"); 
         setTournaments(data);
-      } catch (error) {
-        console.error("Failed to fetch tournaments:", error);
+      } catch (err) {
+        console.error("Failed to fetch tournaments:", err);
+        setError(err.message); // <-- Set error on failure
       }
     };
     fetchTournaments();
@@ -21,21 +26,17 @@ function TournamentDashboardPage() {
 
   const handleAddTournament = async (tournamentData) => {
     try {
-      const response = await fetch("http://localhost:3000/api/tournaments", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(tournamentData),
-      });
-      const newTournamentFromDB = await response.json();
+      // Use the new 'apiPost' helper function
+      const newTournamentFromDB = await apiPost("/tournaments", tournamentData);
 
       setTournaments((currentTournaments) => [
         newTournamentFromDB,
         ...currentTournaments,
       ]);
-    } catch (error) {
-      console.error("Failed to create tournament:", error);
+      setIsModalOpen(false); // <-- Close modal on success
+    } catch (err) {
+      console.error("Failed to create tournament:", err);
+      alert(`Error: ${err.message}`); // <-- Show alert on failure
     }
   };
 
@@ -47,16 +48,29 @@ function TournamentDashboardPage() {
       return;
     }
     try {
-      await fetch(`http://localhost:3000/api/tournaments/${tournamentId}`, {
-        method: "DELETE",
-      });
+      // Use the new 'apiDelete' helper function
+      await apiDelete(`http://localhost:3000/api/tournaments/${tournamentId}`);
+      
       setTournaments((currentTournaments) =>
         currentTournaments.filter((t) => t._id !== tournamentId)
       );
-    } catch (error) {
-      console.error("Failed to delete tournament: ", error);
+    } catch (err) {
+      console.error("Failed to delete tournament: ", err);
+      alert(`Error: ${err.message}`); // <-- Show alert on failure
     }
   };
+
+  // --- Show an error message if fetching failed ---
+  if (error) {
+    return (
+      <div className="text-center text-red-400 p-8">
+        <h2 className="text-3xl font-bold mb-4">Oops! Something went wrong.</h2>
+        <p className="text-lg">Error: {error}</p>
+        <p className="mt-4 text-gray-400">Please try logging out and back in. If the problem persists, contact support.</p>
+      </div>
+    );
+  }
+  // ---
 
   return (
     <div>
@@ -80,10 +94,13 @@ function TournamentDashboardPage() {
             <Link
               key={tournament._id}
               to={`/tournaments/${tournament._id}`}
-              className="block bg-white/10 hover:bg-white/20 p-4 rounded-lg shadow mb-2 text-white"
+              className="block bg-white/10 hover:bg-white/20 p-4 rounded-lg shadow mb-2 text-white transition-all duration-200"
             >
               <div className="flex justify-between items-center">
-                <p className="font-bold text-white">{tournament.name}</p>
+                <div>
+                  <p className="font-bold text-lg text-white">{tournament.name}</p>
+                  <p className="text-sm text-gray-400">{tournament.type}</p>
+                </div>
                 <button
                   onClick={(e) => handleDelete(e, tournament._id)}
                   className="bg-red-600 hover:bg-red-500 text-white text-xs font-bold py-1 px-2 rounded"

@@ -1,9 +1,11 @@
 // src/pages/LoginPage.jsx
-import { useState } from "react";
+import { useState, useContext } from "react";
 import AuthForm from "../components/AuthForm";
+import AuthContext from "../context/AuthContext";
 
 function LoginPage() {
   const [fields, setFields] = useState({ email: "", password: "" });
+  const {loginAction} = useContext(AuthContext);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -22,6 +24,7 @@ function LoginPage() {
         // If not okay, the 'data' object will have a 'msg' property we can use
         throw new Error(data.msg || "Failed to login");
       }
+      loginAction(data);
 
       localStorage.setItem("token", data.token);
       alert("Login successful!");
