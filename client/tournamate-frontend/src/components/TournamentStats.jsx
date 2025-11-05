@@ -1,6 +1,6 @@
 // src/components/TournamentStats.jsx
-import { useMemo } from 'react';
-import { FaFutbol, FaShieldAlt, FaFire } from 'react-icons/fa';
+import { useMemo } from "react";
+import { FaFutbol, FaShieldAlt, FaFire } from "react-icons/fa";
 
 // StatCard sub-component
 function StatCard({ icon, title, value, team }) {
@@ -21,32 +21,31 @@ function StatCard({ icon, title, value, team }) {
 function TournamentStats({ participants, schedule }) {
   const stats = useMemo(() => {
     const standings = {};
-    participants.forEach(p => {
+    participants.forEach((p) => {
       standings[p] = { name: p, GF: 0, GA: 0 };
     });
 
-    const completedMatches = schedule.filter(m => m.status === 'Completed');
+    const completedMatches = schedule.filter((m) => m.status === "Completed");
     let highestScoringMatch = null;
-    let maxGoals = -1; // Start at -1 to capture 0-0
+    let maxGoals = -1;
 
     for (const match of completedMatches) {
       const home = standings[match.homeParticipant];
       const away = standings[match.awayParticipant];
-      
+
       if (home) {
-        home.GF += match.homeScore;
-        home.GA += match.awayScore;
+        home.GF += match.homeScore || 0;
+        home.GA += match.awayScore || 0;
       }
       if (away) {
-        away.GF += match.awayScore;
-        away.GA += match.homeScore;
+        away.GF += match.awayScore || 0;
+        away.GA += match.homeScore || 0;
       }
 
       // Find highest scoring match
-      const totalGoals = match.homeScore + match.awayScore;
-      
-      // --- THIS IS THE FIX ---
-      if (totalGoals >= maxGoals) { // Changed > to >=
+      const totalGoals = (match.homeScore || 0) + (match.awayScore || 0);
+
+      if (totalGoals > maxGoals) {
         maxGoals = totalGoals;
         highestScoringMatch = match;
       }
@@ -55,8 +54,14 @@ function TournamentStats({ participants, schedule }) {
     const teamStats = Object.values(standings);
 
     // Find Top Scorer and Best Defense
-    const topScorer = [...teamStats].sort((a, b) => b.GF - a.GF)[0] || { name: 'N/A', GF: 0 };
-    const bestDefense = [...teamStats].sort((a, b) => a.GA - b.GA)[0] || { name: 'N/A', GA: 0 };
+    const topScorer = [...teamStats].sort((a, b) => b.GF - a.GF)[0] || {
+      name: "N/A",
+      GF: 0,
+    };
+    const bestDefense = [...teamStats].sort((a, b) => a.GA - b.GA)[0] || {
+      name: "N/A",
+      GA: 0,
+    };
 
     return { topScorer, bestDefense, highestScoringMatch };
   }, [participants, schedule]);
@@ -79,7 +84,9 @@ function TournamentStats({ participants, schedule }) {
         <StatCard
           icon={<FaFutbol size={20} />}
           title="Highest Scoring Match"
-          value={`${stats.highestScoringMatch.homeScore} - ${stats.highestScoringMatch.awayScore}`}
+          value={`${stats.highestScoringMatch.homeScore || 0} - ${
+            stats.highestScoringMatch.awayScore || 0
+          }`}
           team={`${stats.highestScoringMatch.homeParticipant} vs ${stats.highestScoringMatch.awayParticipant}`}
         />
       ) : (

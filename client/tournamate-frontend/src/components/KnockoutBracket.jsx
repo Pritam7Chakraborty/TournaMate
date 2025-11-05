@@ -1,145 +1,246 @@
-// src/components/KnockoutBracket.jsx
-import { useMemo, useState } from 'react';
-import { FaEdit } from 'react-icons/fa';
+import React, { useMemo } from "react";
+import { FaEdit, FaTrophy, FaMedal } from "react-icons/fa";
 
-// --- Single Match Card Component (Updated) ---
-function MatchCard({ match, onOpenModal }) {
-  const isPending = match.status === 'Pending';
-  const isTBD = match.status === 'TBD';
-  const isCompleted = match.status === 'Completed';
+const KnockoutBracket = ({ schedule, onOpenModal }) => {
+  const bracketRounds = useMemo(() => {
+    if (!schedule || schedule.length === 0) return [];
 
-  // Determine winners
-  const homeWinner = isCompleted && (match.winner === match.homeParticipant);
-  const awayWinner = isCompleted && (match.winner === match.awayParticipant);
-  
-  const getParticipantClass = (isWinner) => 
-    `flex justify-between items-center p-2 ${isWinner ? 'font-bold text-white' : 'text-gray-400'}`;
+    const roundMap = {};
+    schedule.forEach((match) => {
+      if (!roundMap[match.round]) {
+        roundMap[match.round] = [];
+      }
+      roundMap[match.round].push(match);
+    });
 
-  // Check for penalty shootout
-  const penaltyScore = (match.homePenaltyScore !== null) 
-    ? `(${match.homePenaltyScore} - ${match.awayPenaltyScore}p)` 
-    : '';
+    const rounds = Object.entries(roundMap)
+      .sort((a, b) => Number(b[0]) - Number(a[0]))
+      .map(([roundNum, matches]) => ({
+        roundNum: Number(roundNum),
+        matches: matches.sort((a, b) => a.matchNumber - b.matchNumber),
+      }));
 
-  return (
-    <div className="bg-gray-800 rounded-lg w-full md:w-64 min-h-[100px] shadow-lg">
-      <div className="p-3">
-        <div className={getParticipantClass(homeWinner)}>
-          <span>{match.homeParticipant}</span>
-          <span className="font-mono">{isCompleted ? match.homeScore : ''}</span>
-        </div>
-        
-        <div className="border-b border-gray-700 my-1"></div>
-        
-        <div className={getParticipantClass(awayWinner)}>
-          <span>{match.awayParticipant}</span>
-          <span className="font-mono">{isCompleted ? match.awayScore : ''}</span>
-        </div>
-
-        {penaltyScore && (
-          <p className="text-xs text-center text-yellow-400 mt-1">
-            Won on penalties {penaltyScore}
-          </p>
-        )}
-      </div>
-      
-      {isPending && (
-        <button 
-          onClick={() => onOpenModal(match)}
-          className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium w-full py-1.5 px-3 flex items-center justify-center rounded-b-lg"
-        >
-          <FaEdit className="mr-1.5" /> Update Score
-        </button>
-      )}
-      {isTBD && (
-        <div className="bg-gray-700 text-gray-400 text-xs font-medium w-full py-1.5 px-3 text-center rounded-b-lg">
-          Waiting for participants...
-        </div>
-      )}
-      {isCompleted && !penaltyScore && (
-        <div className="bg-green-600 text-white text-xs font-medium w-full py-1.5 px-3 text-center rounded-b-lg">
-          Final
-        </div>
-      )}
-      {isCompleted && penaltyScore && (
-        <div className="bg-green-600 text-white text-xs font-medium w-full py-1.5 px-3 text-center rounded-b-lg">
-          Final (Pens)
-        </div>
-      )}
-    </div>
-  );
-}
-
-
-// --- Main Responsive Bracket Component ---
-function KnockoutBracket({ schedule, onOpenModal }) {
-  // Group matches by round (KO stage)
-  const rounds = useMemo(() => {
-    return schedule.reduce((acc, match) => {
-      const round = match.round;
-      if (!acc[round]) acc[round] = [];
-      // Sort matches by matchNumber
-      acc[round].push(match);
-      acc[round].sort((a, b) => a.matchNumber - b.matchNumber);
-      return acc;
-    }, {});
+    return rounds;
   }, [schedule]);
 
-  const sortedRoundKeys = Object.keys(rounds).sort((a, b) => b - a);
-  const [activeMobileRound, setActiveMobileRound] = useState(sortedRoundKeys[0]);
-
-  const getRoundTitle = (roundKey) => {
-    const roundNum = Number(roundKey);
-    if (roundNum === 1) return 'Final';
-    if (roundNum === 2) return 'Semi-Finals';
-    if (roundNum === 4) return 'Quarter-Finals';
-    return `Round of ${roundNum * 2}`;
+  const getRoundName = (roundNum) => {
+    if (roundNum === 2) return "Final";
+    if (roundNum === 4) return "Semi-Finals";
+    if (roundNum === 8) return "Quarter-Finals";
+    return `Round of ${roundNum}`;
   };
 
-  const getTabClass = (roundKey) => {
-    const base = "py-2 px-4 font-medium text-sm rounded-md";
-    if (roundKey === activeMobileRound) {
-      return `${base} bg-pink-600 text-white`;
+  const getTeamClasses = (match, isHome) => {
+    const participant = isHome ? match.homeParticipant : match.awayParticipant;
+    const isWinner = match.winner === participant;
+    const isTBD = participant === "TBD";
+    const isBYE = participant === "BYE";
+
+    if (isTBD) {
+      return "bg-gray-800/50 text-gray-500 border-gray-700";
     }
-    return `${base} bg-gray-700 text-gray-300`;
+    if (isBYE) {
+      return "bg-gray-800/30 text-gray-600 border-gray-700";
+    }
+    if (isWinner) {
+      return "bg-gradient-to-r from-yellow-600/30 to-amber-600/30 text-yellow-200 border-yellow-500/50 font-bold shadow-lg shadow-yellow-500/20";
+    }
+    if (match.status === "Completed") {
+      return "bg-gray-800/70 text-gray-400 border-gray-700";
+    }
+    return "bg-gradient-to-r from-indigo-900/40 to-purple-900/40 text-white border-indigo-500/30";
+  };
+
+  const getScoreClasses = (match, isHome) => {
+    const score = isHome ? match.homeScore : match.awayScore;
+    const participant = isHome ? match.homeParticipant : match.awayParticipant;
+    const isWinner = match.winner === participant;
+
+    if (match.status !== "Completed" || score === null) {
+      return "text-gray-600";
+    }
+    if (isWinner) {
+      return "text-yellow-300 font-black";
+    }
+    return "text-gray-400 font-medium";
   };
 
   return (
-    <div>
-      {/* --- 1. Mobile-Only Tabbed View --- */}
-      <div className="md:hidden">
-        {/* Tabs */}
-        <div className="flex flex-wrap gap-2 mb-4">
-          {sortedRoundKeys.map(key => (
-            <button key={key} className={getTabClass(key)} onClick={() => setActiveMobileRound(key)}>
-              {getRoundTitle(key)}
-            </button>
-          ))}
-        </div>
-        {/* Content */}
-        <div className="flex flex-col gap-4">
-          {rounds[activeMobileRound].map(match => (
-            <MatchCard key={match._id} match={match} onOpenModal={onOpenModal} />
+    <div className="relative">
+      {/* Mobile Warning */}
+      <div className="lg:hidden bg-gradient-to-r from-blue-600/20 to-purple-600/20 border border-blue-500/30 rounded-xl p-4 mb-6">
+        <p className="text-sm text-blue-300 text-center">
+          💡 Scroll horizontally to view the full bracket
+        </p>
+      </div>
+
+      {/* Bracket Container */}
+      <div className="overflow-x-auto pb-6">
+        <div className="inline-flex gap-8 min-w-max px-4">
+          {bracketRounds.map((round, roundIndex) => (
+            <div key={round.roundNum} className="flex flex-col justify-center gap-6 min-w-[280px]">
+              {/* Round Header */}
+              <div className="text-center mb-4 sticky top-0 z-10 bg-gray-900/90 backdrop-blur-sm py-3 rounded-xl border border-white/10">
+                <div className="flex items-center justify-center gap-2 mb-1">
+                  {round.roundNum === 2 && <FaTrophy className="text-yellow-400 text-xl" />}
+                  {round.roundNum === 4 && <FaMedal className="text-amber-400 text-lg" />}
+                  <h3 className="text-xl font-bold text-pink-400">
+                    {getRoundName(round.roundNum)}
+                  </h3>
+                </div>
+                <p className="text-xs text-gray-400">
+                  {round.matches.length} {round.matches.length === 1 ? "Match" : "Matches"}
+                </p>
+              </div>
+
+              {/* Matches */}
+              <div 
+                className="flex flex-col gap-6"
+                style={{ 
+                  marginTop: roundIndex > 0 ? `${Math.pow(2, roundIndex - 1) * 80}px` : '0',
+                }}
+              >
+                {round.matches.map((match) => (
+                  <div
+                    key={match._id || match.matchNumber}
+                    className="relative"
+                    style={{
+                      marginBottom: roundIndex > 0 ? `${Math.pow(2, roundIndex) * 80}px` : '0',
+                    }}
+                  >
+                    {/* Match Card */}
+                    <div className="bg-gradient-to-br from-gray-900/80 to-black/80 backdrop-blur-sm rounded-2xl border border-white/10 overflow-hidden shadow-2xl hover:shadow-pink-500/20 transition-all hover:border-pink-500/30">
+                      {/* Match Number Badge */}
+                      <div className="bg-gradient-to-r from-pink-600/30 to-purple-600/30 px-4 py-2 text-center border-b border-white/10">
+                        <span className="text-xs font-bold text-pink-300">
+                          Match #{match.matchNumber}
+                        </span>
+                      </div>
+
+                      {/* Teams */}
+                      <div className="p-3 space-y-2">
+                        {/* Home Team */}
+                        <div className={`flex items-center justify-between p-3 rounded-xl border-2 transition-all ${getTeamClasses(match, true)}`}>
+                          <div className="flex items-center gap-3 flex-1 min-w-0">
+                            {match.winner === match.homeParticipant && match.status === "Completed" && (
+                              <FaTrophy className="text-yellow-400 text-sm flex-shrink-0" />
+                            )}
+                            <span className="text-sm font-semibold truncate">
+                              {match.homeParticipant}
+                            </span>
+                          </div>
+                          {match.status === "Completed" && match.homeScore !== null && (
+                            <span className={`text-2xl ml-3 flex-shrink-0 ${getScoreClasses(match, true)}`}>
+                              {match.homeScore}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Away Team */}
+                        <div className={`flex items-center justify-between p-3 rounded-xl border-2 transition-all ${getTeamClasses(match, false)}`}>
+                          <div className="flex items-center gap-3 flex-1 min-w-0">
+                            {match.winner === match.awayParticipant && match.status === "Completed" && (
+                              <FaTrophy className="text-yellow-400 text-sm flex-shrink-0" />
+                            )}
+                            <span className="text-sm font-semibold truncate">
+                              {match.awayParticipant}
+                            </span>
+                          </div>
+                          {match.status === "Completed" && match.awayScore !== null && (
+                            <span className={`text-2xl ml-3 flex-shrink-0 ${getScoreClasses(match, false)}`}>
+                              {match.awayScore}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Penalty Shootout */}
+                      {match.homePenaltyScore !== null && match.awayPenaltyScore !== null && (
+                        <div className="px-4 py-2 bg-yellow-600/20 border-t border-yellow-500/30">
+                          <p className="text-xs text-yellow-300 text-center font-semibold">
+                            Penalties: {match.homePenaltyScore} - {match.awayPenaltyScore}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Status & Actions */}
+                      <div className="px-4 py-3 bg-black/30 border-t border-white/10">
+                        {match.status === "Completed" ? (
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-medium text-green-400 flex items-center gap-1">
+                              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                              Completed
+                            </span>
+                            {match.homeParticipant !== "TBD" && match.awayParticipant !== "TBD" && 
+                             match.homeParticipant !== "BYE" && match.awayParticipant !== "BYE" && (
+                              <button
+                                onClick={() => onOpenModal(match)}
+                                className="text-xs text-indigo-300 hover:text-indigo-200 font-medium flex items-center gap-1 bg-indigo-600/20 hover:bg-indigo-600/30 px-3 py-1 rounded-lg border border-indigo-500/30 transition-all"
+                              >
+                                <FaEdit className="text-xs" />
+                                Edit
+                              </button>
+                            )}
+                          </div>
+                        ) : match.status === "Pending" ? (
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-medium text-yellow-400 flex items-center gap-1">
+                              <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></div>
+                              Pending
+                            </span>
+                            {match.homeParticipant !== "TBD" && match.awayParticipant !== "TBD" && 
+                             match.homeParticipant !== "BYE" && match.awayParticipant !== "BYE" && (
+                              <button
+                                onClick={() => onOpenModal(match)}
+                                className="text-xs text-pink-300 hover:text-pink-200 font-medium flex items-center gap-1 bg-pink-600/20 hover:bg-pink-600/30 px-3 py-1.5 rounded-lg border border-pink-500/30 transition-all"
+                              >
+                                <FaEdit className="text-xs" />
+                                Set Score
+                              </button>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-xs font-medium text-gray-500 flex items-center gap-1">
+                            <div className="w-2 h-2 bg-gray-500 rounded-full"></div>
+                            {match.status}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Connection Line to Next Round */}
+                    {roundIndex < bracketRounds.length - 1 && (
+                      <div className="absolute top-1/2 -right-8 w-8 h-0.5 bg-gradient-to-r from-pink-500/50 to-purple-500/50"></div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
           ))}
         </div>
       </div>
 
-      {/* --- 2. Desktop-Only Horizontal Scroll View --- */}
-      <div className="hidden md:flex overflow-x-auto py-4">
-        {sortedRoundKeys.map(roundKey => (
-          <div key={roundKey} className="flex flex-col justify-center min-w-[300px] px-4">
-            <h3 className="text-xl font-bold text-pink-400 mb-4 text-center">
-              {getRoundTitle(roundKey)}
-            </h3>
-            <div className="flex flex-col gap-6">
-              {rounds[roundKey].map(match => (
-                <MatchCard key={match._id} match={match} onOpenModal={onOpenModal} />
-              ))}
+      {/* Champion Display */}
+      {bracketRounds.length > 0 && bracketRounds[bracketRounds.length - 1].matches[0]?.winner && (
+        <div className="mt-8 text-center">
+          <div className="inline-block bg-gradient-to-r from-yellow-600/20 to-amber-600/20 border-2 border-yellow-500/50 rounded-2xl p-8 shadow-2xl shadow-yellow-500/20">
+            <div className="flex flex-col items-center gap-3">
+              <FaTrophy className="text-yellow-400 text-5xl animate-bounce" />
+              <h3 className="text-2xl font-black text-white">CHAMPION</h3>
+              <p className="text-3xl font-black text-yellow-300">
+                {bracketRounds[bracketRounds.length - 1].matches[0].winner}
+              </p>
+              <div className="mt-2 flex gap-2">
+                <div className="w-3 h-3 bg-yellow-400 rounded-full animate-ping"></div>
+                <div className="w-3 h-3 bg-amber-400 rounded-full animate-ping" style={{ animationDelay: '0.2s' }}></div>
+                <div className="w-3 h-3 bg-yellow-400 rounded-full animate-ping" style={{ animationDelay: '0.4s' }}></div>
+              </div>
             </div>
           </div>
-        ))}
-      </div>
+        </div>
+      )}
     </div>
   );
-}
+};
 
 export default KnockoutBracket;
