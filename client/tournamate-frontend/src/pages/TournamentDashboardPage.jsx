@@ -1,42 +1,47 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useContext } from "react";
 import { Link } from "react-router-dom";
-// Import the specific api functions we'll use
-import { api, apiPost, apiDelete } from '../utils/api'; 
+import { api, apiPost, apiDelete } from "../utils/api";
 import CreateTournamentModal from "../components/CreateTournamentModal";
+import AuthContext from "../context/AuthContext";
 
 function TournamentDashboardPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [tournaments, setTournaments] = useState([]);
-  const [error, setError] = useState(null); // <-- Add error state
+  const [error, setError] = useState(null);
+  const { logoutAction } = useContext(AuthContext);
 
   useEffect(() => {
     const fetchTournaments = async () => {
       try {
-        setError(null); // <-- Reset error
-        // Use the new 'api' function. It automatically sends the token.
-        const data = await api("/tournaments"); 
+        setError(null);
+        const data = await api("/tournaments");
         setTournaments(data);
       } catch (err) {
+        if (
+          err.message.includes("Token is not valid") ||
+          err.message.includes("No token, authorization denied")
+        ) {
+          logoutAction();
+          return;
+        }
         console.error("Failed to fetch tournaments:", err);
-        setError(err.message); // <-- Set error on failure
+        setError(err.message);
       }
     };
     fetchTournaments();
-  }, []);
+  }, [logoutAction]);
 
   const handleAddTournament = async (tournamentData) => {
     try {
-      // Use the new 'apiPost' helper function
       const newTournamentFromDB = await apiPost("/tournaments", tournamentData);
-
       setTournaments((currentTournaments) => [
         newTournamentFromDB,
         ...currentTournaments,
       ]);
-      setIsModalOpen(false); // <-- Close modal on success
+      setIsModalOpen(false);
     } catch (err) {
       console.error("Failed to create tournament:", err);
-      alert(`Error: ${err.message}`); // <-- Show alert on failure
+      alert(`Error: ${err.message}`);
     }
   };
 
@@ -48,29 +53,27 @@ function TournamentDashboardPage() {
       return;
     }
     try {
-      // Use the new 'apiDelete' helper function
-      await apiDelete(`http://localhost:3000/api/tournaments/${tournamentId}`);
-      
+      await apiDelete(`/tournaments/${tournamentId}`);
       setTournaments((currentTournaments) =>
         currentTournaments.filter((t) => t._id !== tournamentId)
       );
     } catch (err) {
       console.error("Failed to delete tournament: ", err);
-      alert(`Error: ${err.message}`); // <-- Show alert on failure
+      alert(`Error: ${err.message}`);
     }
   };
 
-  // --- Show an error message if fetching failed ---
   if (error) {
     return (
       <div className="text-center text-red-400 p-8">
         <h2 className="text-3xl font-bold mb-4">Oops! Something went wrong.</h2>
         <p className="text-lg">Error: {error}</p>
-        <p className="mt-4 text-gray-400">Please try logging out and back in. If the problem persists, contact support.</p>
+        <p className="mt-4 text-gray-400">
+          Please try logging out and back in.
+        </p>
       </div>
     );
   }
-  // ---
 
   return (
     <div>
@@ -98,7 +101,9 @@ function TournamentDashboardPage() {
             >
               <div className="flex justify-between items-center">
                 <div>
-                  <p className="font-bold text-lg text-white">{tournament.name}</p>
+                  <p className="font-bold text-lg text-white">
+                    {tournament.name}
+                  </p>
                   <p className="text-sm text-gray-400">{tournament.type}</p>
                 </div>
                 <button

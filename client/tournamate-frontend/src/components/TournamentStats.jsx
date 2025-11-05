@@ -1,8 +1,8 @@
 // src/components/TournamentStats.jsx
-import { useMemo } from "react";
-import { FaFutbol, FaShieldAlt, FaFire } from "react-icons/fa";
+import { useMemo } from 'react';
+import { FaFutbol, FaShieldAlt, FaFire } from 'react-icons/fa';
 
-// A simple reusable stat card
+// StatCard sub-component
 function StatCard({ icon, title, value, team }) {
   return (
     <div className="bg-gray-800 p-4 rounded-lg flex items-center">
@@ -20,20 +20,19 @@ function StatCard({ icon, title, value, team }) {
 
 function TournamentStats({ participants, schedule }) {
   const stats = useMemo(() => {
-    // 1. Get the same standings logic from LeagueTable
     const standings = {};
-    participants.forEach((p) => {
+    participants.forEach(p => {
       standings[p] = { name: p, GF: 0, GA: 0 };
     });
 
-    const completedMatches = schedule.filter((m) => m.status === "Completed");
+    const completedMatches = schedule.filter(m => m.status === 'Completed');
     let highestScoringMatch = null;
-    let maxGoals = -1;
+    let maxGoals = -1; // Start at -1 to capture 0-0
 
     for (const match of completedMatches) {
       const home = standings[match.homeParticipant];
       const away = standings[match.awayParticipant];
-
+      
       if (home) {
         home.GF += match.homeScore;
         home.GA += match.awayScore;
@@ -43,9 +42,11 @@ function TournamentStats({ participants, schedule }) {
         away.GA += match.homeScore;
       }
 
-      // 2. Find highest scoring match
+      // Find highest scoring match
       const totalGoals = match.homeScore + match.awayScore;
-      if (totalGoals > maxGoals) {
+      
+      // --- THIS IS THE FIX ---
+      if (totalGoals >= maxGoals) { // Changed > to >=
         maxGoals = totalGoals;
         highestScoringMatch = match;
       }
@@ -53,9 +54,9 @@ function TournamentStats({ participants, schedule }) {
 
     const teamStats = Object.values(standings);
 
-    // 3. Find Top Scorer and Best Defense
-    const topScorer = [...teamStats].sort((a, b) => b.GF - a.GF)[0];
-    const bestDefense = [...teamStats].sort((a, b) => a.GA - b.GA)[0];
+    // Find Top Scorer and Best Defense
+    const topScorer = [...teamStats].sort((a, b) => b.GF - a.GF)[0] || { name: 'N/A', GF: 0 };
+    const bestDefense = [...teamStats].sort((a, b) => a.GA - b.GA)[0] || { name: 'N/A', GA: 0 };
 
     return { topScorer, bestDefense, highestScoringMatch };
   }, [participants, schedule]);
@@ -65,14 +66,14 @@ function TournamentStats({ participants, schedule }) {
       <StatCard
         icon={<FaFire size={20} />}
         title="Top Scorer (Team)"
-        value={`${stats.topScorer?.GF} Goals`}
-        team={stats.topScorer?.name}
+        value={`${stats.topScorer.GF} Goals`}
+        team={stats.topScorer.name}
       />
       <StatCard
         icon={<FaShieldAlt size={20} />}
         title="Best Defense (Team)"
-        value={`${stats.bestDefense?.GA} Conceded`}
-        team={stats.bestDefense?.name}
+        value={`${stats.bestDefense.GA} Conceded`}
+        team={stats.bestDefense.name}
       />
       {stats.highestScoringMatch ? (
         <StatCard

@@ -20,8 +20,6 @@ export const api = async (endpoint, method = 'GET', body = null) => {
   };
 
   if (token) {
-    // This header ('x-auth-token') must match what your
-    // backend middleware (middleware/auth.js) expects
     options.headers['x-auth-token'] = token;
   }
 
@@ -30,16 +28,40 @@ export const api = async (endpoint, method = 'GET', body = null) => {
   }
 
   const response = await fetch(`${BASE_URL}${endpoint}`, options);
-  const data = await response.json();
 
-  if (!response.ok) {
-    throw new Error(data.msg || 'An API error occurred');
+  // 1. Read the response as text first. This is safe and only reads the stream once.
+  const responseText = await response.text();
+
+  // 2. Check if the request was successful
+  if (response.ok) {
+    // If there's no text, it was a 204 (No Content) or just an empty success
+    if (!responseText) {
+      return null;
+    }
+    
+    // Try to parse the successful text response as JSON
+    try {
+      return JSON.parse(responseText);
+    } catch  {
+      // It was a 200 OK, but not JSON? Return the text.
+      return responseText;
+    }
   }
 
-  return data;
+  // --- If we are here, the request FAILED (4xx or 5xx) ---
+
+  // 3. Try to parse the error text as JSON
+  try {
+    const errorData = JSON.parse(responseText);
+    // If successful, throw the JSON error message
+    throw new Error(errorData.msg || 'An API error occurred');
+  } catch  {
+    // If it failed, the error was plain text. Just throw the text.
+    throw new Error(responseText || `HTTP error! Status: ${response.status}`);
+  }
 };
 
-// You can also create specific helper functions
+// Helper functions (these are unchanged and will use the new logic)
 export const apiGet = (endpoint) => api(endpoint, 'GET');
 export const apiPost = (endpoint, body) => api(endpoint, 'POST', body);
 export const apiPut = (endpoint, body) => api(endpoint, 'PUT', body);
