@@ -1,7 +1,7 @@
 // src/utils/api.js
 
-const BASE_URL = 'http://localhost:3000/api';
-
+// Use the environment variable if it exists, otherwise fallback to localhost
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 /**
  * A centralized fetch wrapper for our API
  * @param {string} endpoint The API endpoint (e.g., '/tournaments')
