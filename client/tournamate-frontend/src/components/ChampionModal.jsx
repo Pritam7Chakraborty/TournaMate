@@ -1,6 +1,6 @@
 // src/components/ChampionModal.jsx
-import { useState, useEffect } from 'react';
-import { FaTrophy, FaCrown, FaStar, FaTimes } from 'react-icons/fa';
+import { useState, useEffect } from "react";
+import { FaTrophy, FaCrown, FaStar, FaTimes } from "react-icons/fa";
 
 function ChampionModal({ name, type, onClose, autoCloseMs = 10000 }) {
   const [isVisible, setIsVisible] = useState(false);
@@ -17,7 +17,9 @@ function ChampionModal({ name, type, onClose, autoCloseMs = 10000 }) {
       delay: Math.random() * 2,
       duration: 3 + Math.random() * 2,
       rotation: Math.random() * 360,
-      color: ['#ec4899', '#8b5cf6', '#f59e0b', '#10b981', '#3b82f6'][Math.floor(Math.random() * 5)]
+      color: ["#ec4899", "#8b5cf6", "#f59e0b", "#10b981", "#3b82f6"][
+        Math.floor(Math.random() * 5)
+      ],
     }));
     setConfetti(confettiPieces);
 
@@ -27,7 +29,7 @@ function ChampionModal({ name, type, onClose, autoCloseMs = 10000 }) {
     }, autoCloseMs);
 
     return () => clearTimeout(timer);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoCloseMs]);
 
   const handleClose = () => {
@@ -38,7 +40,7 @@ function ChampionModal({ name, type, onClose, autoCloseMs = 10000 }) {
   return (
     <div
       className={`fixed inset-0 bg-black/80 backdrop-blur-lg flex justify-center items-center z-[100] transition-opacity duration-500 ${
-        isVisible ? 'opacity-100' : 'opacity-0'
+        isVisible ? "opacity-100" : "opacity-0"
       }`}
       onClick={handleClose}
     >
@@ -52,14 +54,14 @@ function ChampionModal({ name, type, onClose, autoCloseMs = 10000 }) {
             backgroundColor: piece.color,
             animationDelay: `${piece.delay}s`,
             animationDuration: `${piece.duration}s`,
-            transform: `rotate(${piece.rotation}deg)`
+            transform: `rotate(${piece.rotation}deg)`,
           }}
         />
       ))}
 
       {/* Modal Container */}
       <div
-        className={`relative max-w-2xl w-full mx-4 transform transition-all duration-700 ${
+        className={`relative max-w-2xl w-[90vw] sm:w-[85vw] md:w-[75vw] lg:w-[60vw] h-auto max-h-[90vh] mx-auto transform transition-all duration-700 ${
           isVisible ? 'scale-100 translate-y-0' : 'scale-90 translate-y-10'
         }`}
         onClick={(e) => e.stopPropagation()}
@@ -76,7 +78,7 @@ function ChampionModal({ name, type, onClose, autoCloseMs = 10000 }) {
         <div className="relative bg-gradient-to-br from-gray-900 via-purple-900/30 to-gray-900 rounded-3xl border-4 border-yellow-500/50 shadow-2xl overflow-hidden">
           {/* Animated Background Glow */}
           <div className="absolute inset-0 bg-gradient-to-r from-yellow-500/0 via-yellow-500/20 to-yellow-500/0 animate-shimmer"></div>
-          
+
           {/* Stars Background */}
           <div className="absolute inset-0 overflow-hidden">
             {Array.from({ length: 20 }).map((_, i) => (
@@ -88,7 +90,7 @@ function ChampionModal({ name, type, onClose, autoCloseMs = 10000 }) {
                   left: `${Math.random() * 100}%`,
                   fontSize: `${Math.random() * 12 + 8}px`,
                   animationDelay: `${Math.random() * 3}s`,
-                  animationDuration: `${Math.random() * 2 + 2}s`
+                  animationDuration: `${Math.random() * 2 + 2}s`,
                 }}
               />
             ))}
@@ -115,13 +117,13 @@ function ChampionModal({ name, type, onClose, autoCloseMs = 10000 }) {
               <h2 className="text-5xl md:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-yellow-200 to-yellow-400 animate-gradient bg-[length:200%_auto] drop-shadow-lg">
                 🏆 CHAMPION! 🏆
               </h2>
-              
+
               <div className="h-1 w-32 mx-auto bg-gradient-to-r from-transparent via-yellow-500 to-transparent rounded-full"></div>
-              
+
               <p className="text-3xl md:text-5xl font-black text-white drop-shadow-lg animate-pulse-slow">
                 {name}
               </p>
-              
+
               <div className="inline-block px-6 py-2 bg-gradient-to-r from-purple-600/30 to-pink-600/30 border border-purple-500/50 rounded-full">
                 <p className="text-lg text-purple-300 font-bold uppercase tracking-wider">
                   {type} Winner
@@ -190,7 +192,8 @@ function ChampionModal({ name, type, onClose, autoCloseMs = 10000 }) {
         }
 
         @keyframes twinkle {
-          0%, 100% {
+          0%,
+          100% {
             opacity: 0.2;
             transform: scale(1);
           }
@@ -201,7 +204,8 @@ function ChampionModal({ name, type, onClose, autoCloseMs = 10000 }) {
         }
 
         @keyframes wiggle {
-          0%, 100% {
+          0%,
+          100% {
             transform: rotate(-5deg);
           }
           50% {
@@ -210,7 +214,8 @@ function ChampionModal({ name, type, onClose, autoCloseMs = 10000 }) {
         }
 
         @keyframes float {
-          0%, 100% {
+          0%,
+          100% {
             transform: translateY(0) translateX(-50%);
           }
           50% {
@@ -219,7 +224,8 @@ function ChampionModal({ name, type, onClose, autoCloseMs = 10000 }) {
         }
 
         @keyframes bounce-slow {
-          0%, 100% {
+          0%,
+          100% {
             transform: translateY(0);
           }
           50% {
@@ -265,7 +271,8 @@ function ChampionModal({ name, type, onClose, autoCloseMs = 10000 }) {
         }
 
         @keyframes pulse-slow {
-          0%, 100% {
+          0%,
+          100% {
             opacity: 1;
           }
           50% {

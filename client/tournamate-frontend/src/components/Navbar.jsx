@@ -1,4 +1,3 @@
-// src/components/Navbar.jsx
 import { useContext, useState } from "react";
 import { Link, NavLink } from "react-router-dom";
 import AuthContext from "../context/AuthContext";
@@ -87,6 +86,7 @@ function Navbar() {
           <button
             onClick={toggleMobileMenu}
             className="md:hidden w-10 h-10 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-300 hover:text-white transition-all"
+            aria-label={isMobileMenuOpen ? "Close menu" : "Open menu"}
           >
             {isMobileMenuOpen ? <FaTimes size={20} /> : <FaBars size={20} />}
           </button>
@@ -170,7 +170,8 @@ function Navbar() {
         </div>
       </div>
 
-      <style jsx>{`
+      {/* Embedded styles (not styled-jsx) - safe for CRA/Vite */}
+      <style>{`
         @keyframes gradient {
           0% {
             background-position: 0% 50%;

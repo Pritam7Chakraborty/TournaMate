@@ -1,5 +1,6 @@
+// src/pages/TournamentDetailPage.jsx
 import { useState, useEffect, useMemo, useContext } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { api, apiPost, apiPut } from "../utils/api";
 import {
   FaSpinner,
@@ -29,8 +30,18 @@ function TournamentDetailPage() {
   const [selectedMatch, setSelectedMatch] = useState(null);
   const [activeTab, setActiveTab] = useState("overview");
   const [openRounds, setOpenRounds] = useState({});
-  const { logoutAction } = useContext(AuthContext);
+  const { logoutAction, user } = useContext(AuthContext || {});
   const [champion, setChampion] = useState(null);
+  const navigate = useNavigate();
+
+  // client-side guard: redirect away if not logged in (defensive)
+  useEffect(() => {
+    const token =
+      typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    if (!user && !token) {
+      navigate("/login", { replace: true });
+    }
+  }, [user, navigate]);
 
   useEffect(() => {
     const fetchTournament = async () => {
@@ -46,22 +57,24 @@ function TournamentDetailPage() {
         const data = await api(`/tournaments/${tournamentId}`);
         setTournament(data);
 
-        if (data.schedule && data.schedule.length > 0) {
+        if (data?.schedule && data.schedule.length > 0) {
           const firstKey =
-            data.schedule.sort(
-              (a, b) => (a.matchNumber || 0) - (b.matchNumber || 0)
-            )[0].group || data.schedule[0].round;
+            data.schedule
+              .slice()
+              .sort((a, b) => (a.matchNumber || 0) - (b.matchNumber || 0))[0]
+              .group || data.schedule[0].round;
           setOpenRounds({ [firstKey]: true });
         }
       } catch (err) {
         if (
-          err.message.includes("Token is not valid") ||
-          err.message.includes("No token, authorization denied")
+          err?.message &&
+          (err.message.includes("Token is not valid") ||
+            err.message.includes("No token, authorization denied"))
         ) {
-          logoutAction();
+          if (logoutAction) logoutAction();
           return;
         }
-        setError(err.message);
+        setError(err.message || "Failed to fetch tournament");
       } finally {
         setLoading(false);
       }
@@ -69,6 +82,7 @@ function TournamentDetailPage() {
     fetchTournament();
   }, [tournamentId, logoutAction]);
 
+  // ----- Improved champion detection + clinch detection -----
   useEffect(() => {
     if (
       !tournament ||
@@ -79,19 +93,246 @@ function TournamentDetailPage() {
       return;
     }
 
-    const finalMatch = tournament.schedule.find(
-      (m) => Number(m.round) === 1 && m.winner
-    );
-    if (finalMatch && finalMatch.winner) {
-      const t = String(tournament.type || "");
-      if (["League", "Knockout", "League + Knockout"].includes(t)) {
-        if (!finalMatch._championShown) {
-          setChampion({ name: finalMatch.winner, type: t });
-          finalMatch._championShown = true;
+    // compute standings + clinch status for a league/group
+    const computeStandingsAndClinch = (participants = [], schedule = []) => {
+      // base stats
+      const stats = (participants || []).map((p) => ({
+        name: p,
+        MP: 0,
+        W: 0,
+        D: 0,
+        L: 0,
+        GF: 0,
+        GA: 0,
+        GD: 0,
+        Pts: 0,
+      }));
+
+      const completed = (schedule || []).filter(
+        (m) => m.status === "Completed"
+      );
+
+      // fill stats from completed matches
+      for (const m of completed) {
+        const home = stats.find((s) => s.name === m.homeParticipant);
+        const away = stats.find((s) => s.name === m.awayParticipant);
+        if (!home || !away) continue;
+
+        const hs = Number(m.homeScore || 0);
+        const as = Number(m.awayScore || 0);
+
+        home.MP++;
+        away.MP++;
+        home.GF += hs;
+        home.GA += as;
+        away.GF += as;
+        away.GA += hs;
+
+        if (hs > as) {
+          home.W++;
+          away.L++;
+          home.Pts += 3;
+        } else if (as > hs) {
+          away.W++;
+          home.L++;
+          away.Pts += 3;
+        } else {
+          home.D++;
+          away.D++;
+          home.Pts += 1;
+          away.Pts += 1;
         }
+
+        home.GD = home.GF - home.GA;
+        away.GD = away.GF - away.GA;
+      }
+
+      // h2h calculator for blocks of tied teams
+      const h2hFor = (teams, matches) => {
+        const map = {};
+        teams.forEach(
+          (t) => (map[t.name] = { name: t.name, Pts: 0, GF: 0, GA: 0, GD: 0 })
+        );
+        const names = teams.map((t) => t.name);
+
+        for (const m of matches) {
+          if (
+            names.includes(m.homeParticipant) &&
+            names.includes(m.awayParticipant)
+          ) {
+            const h = map[m.homeParticipant];
+            const a = map[m.awayParticipant];
+            const hs = Number(m.homeScore || 0);
+            const as = Number(m.awayScore || 0);
+            h.GF += hs;
+            h.GA += as;
+            a.GF += as;
+            a.GA += hs;
+            if (hs > as) h.Pts += 3;
+            else if (as > hs) a.Pts += 3;
+            else {
+              h.Pts += 1;
+              a.Pts += 1;
+            }
+          }
+        }
+        Object.values(map).forEach((x) => (x.GD = x.GF - x.GA));
+        return map;
+      };
+
+      // initial sort by Pts then name (name as stable fallback)
+      stats.sort((a, b) => {
+        if (a.Pts !== b.Pts) return b.Pts - a.Pts;
+        return a.name.localeCompare(b.name);
+      });
+
+      // resolve tied blocks using H2H then GD then GF then name
+      const resolved = [];
+      for (let i = 0; i < stats.length; ) {
+        const block = [stats[i]];
+        let j = i + 1;
+        while (j < stats.length && stats[j].Pts === stats[i].Pts) {
+          block.push(stats[j]);
+          j++;
+        }
+
+        if (block.length > 1) {
+          const h2h = h2hFor(block, completed);
+          block.forEach((t) => {
+            const h = h2h[t.name] || { Pts: 0, GD: 0, GF: 0 };
+            t._h2hPts = h.Pts;
+            t._h2hGD = h.GD;
+            t._h2hGF = h.GF;
+          });
+
+          block.sort((x, y) => {
+            if (x._h2hPts !== y._h2hPts) return y._h2hPts - x._h2hPts;
+            if (x._h2hGD !== y._h2hGD) return y._h2hGD - x._h2hGD;
+            if (x._h2hGF !== y._h2hGF) return y._h2hGF - x._h2hGF;
+            if (x.GD !== y.GD) return y.GD - x.GD;
+            if (x.GF !== y.GF) return y.GF - x.GF;
+            return x.name.localeCompare(y.name);
+          });
+
+          // cleanup temp props
+          block.forEach((t) => {
+            delete t._h2hPts;
+            delete t._h2hGD;
+            delete t._h2hGF;
+          });
+        }
+
+        resolved.push(...block);
+        i = j;
+      }
+
+      // count remaining matches per team (for conservative clinch)
+      const remaining = {};
+      (participants || []).forEach((p) => (remaining[p] = 0));
+      for (const m of schedule) {
+        if (m.status === "Completed") continue;
+        if (
+          m.homeParticipant &&
+          Object.prototype.hasOwnProperty.call(remaining, m.homeParticipant)
+        )
+          remaining[m.homeParticipant]++;
+        if (
+          m.awayParticipant &&
+          Object.prototype.hasOwnProperty.call(remaining, m.awayParticipant)
+        )
+          remaining[m.awayParticipant]++;
+      }
+      const remainingMaxPts = {};
+      Object.keys(remaining).forEach(
+        (k) => (remainingMaxPts[k] = remaining[k] * 3)
+      );
+
+      // conservative clinch detection:
+      // team t is clinched if no other team can equal or surpass its points even if those teams win all remaining matches
+      const clinched = {};
+      for (const t of resolved) {
+        let canBeCaught = false;
+        for (const o of resolved) {
+          if (o.name === t.name) continue;
+          if (o.Pts + (remainingMaxPts[o.name] || 0) >= t.Pts) {
+            // potential to catch (ties handled by tie-breakers — we conservatively assume they could win tie-breaks)
+            canBeCaught = true;
+            break;
+          }
+        }
+        clinched[t.name] = !canBeCaught;
+      }
+
+      return { standings: resolved, remaining, remainingMaxPts, clinched };
+    };
+
+    const tType = String(tournament.type || "").trim();
+
+    // 1) Knockout: detect final properly (lowest round number among non-group matches)
+    if (
+      tType === "Knockout" ||
+      (tType === "League + Knockout" &&
+        (!tournament.groups || tournament.groups.length === 0))
+    ) {
+      const koMatches = tournament.schedule.filter((m) => !m.group);
+      if (koMatches.length > 0) {
+        const roundNumbers = koMatches
+          .map((m) => Number(m.round || Infinity))
+          .filter((r) => Number.isFinite(r));
+        if (roundNumbers.length > 0) {
+          const finalRound = Math.min(...roundNumbers);
+          const finalMatch = koMatches.find(
+            (m) => Number(m.round) === finalRound && m.winner
+          );
+          if (finalMatch && finalMatch.winner) {
+            if (!finalMatch._championShown) {
+              setChampion({ name: finalMatch.winner, type: tType });
+              finalMatch._championShown = true;
+            }
+            return;
+          }
+        }
+      }
+    }
+
+    // 2) League or League+Knockout with groups: compute standings and only show champion when
+    //    - pure league: top team is mathematically clinched OR all matches complete
+    //    - league+knockout: we don't show overall champion until KO winner exists (handled above). For group winners, the advance-winners route will handle it.
+    if (tType === "League" || tType === "League + Knockout") {
+      const groupsExist = tournament.groups && tournament.groups.length > 0;
+      if (!groupsExist) {
+        // pure league
+        const calc = computeStandingsAndClinch(
+          tournament.participants || [],
+          tournament.schedule || []
+        );
+        const top = calc.standings[0];
+        if (!top) {
+          setChampion(null);
+          return;
+        }
+        const allComplete = (tournament.schedule || []).every(
+          (m) => m.status === "Completed"
+        );
+        if (calc.clinched[top.name] || allComplete) {
+          // announce champion once (flag on object so we don't repeatedly pop)
+          if (!top._championShown) {
+            setChampion({ name: top.name, type: tType });
+            top._championShown = true;
+          }
+          return;
+        }
+        setChampion(null);
+        return;
+      } else {
+        // League + Knockout with groups -> do not show overall champion until KO final.
+        // If you want group-level clinch badges, that is handled in LeagueTable component.
+        setChampion(null);
         return;
       }
     }
+
+    // fallback: no champion
     setChampion(null);
   }, [tournament]);
 
@@ -111,11 +352,28 @@ function TournamentDetailPage() {
     }
 
     try {
-      const payload =
+      let payload = undefined;
+
+      // For league tournaments without groups, send numGroups
+      if (
         endpoint.includes("generate-schedule") &&
         (!tournament.groups || tournament.groups.length === 0)
-          ? { numGroups: tournament.numGroups || undefined }
-          : undefined;
+      ) {
+        // Check if numGroups exists and is valid
+        if (tournament.numGroups && tournament.numGroups > 0) {
+          payload = { numGroups: tournament.numGroups };
+        } else {
+          // If no numGroups, ask user or default to 1 (single league)
+          const numGroups = prompt(
+            "Enter number of groups (or leave empty for single league):",
+            ""
+          );
+          if (numGroups && parseInt(numGroups) > 0) {
+            payload = { numGroups: parseInt(numGroups) };
+          }
+          // If empty/cancelled, payload stays undefined (single league)
+        }
+      }
 
       const updatedTournament = payload
         ? await apiPost(endpoint, payload)
@@ -124,13 +382,14 @@ function TournamentDetailPage() {
       setTournament(updatedTournament);
       if (updatedTournament.schedule && updatedTournament.schedule.length > 0) {
         const firstKey =
-          updatedTournament.schedule.sort(
-            (a, b) => (a.matchNumber || 0) - (b.matchNumber || 0)
-          )[0].group || updatedTournament.schedule[0].round;
+          updatedTournament.schedule
+            .slice()
+            .sort((a, b) => (a.matchNumber || 0) - (b.matchNumber || 0))[0]
+            .group || updatedTournament.schedule[0].round;
         setOpenRounds({ [firstKey]: true });
       }
     } catch (err) {
-      alert(`Error: ${err.message}`);
+      alert(`Error: ${err.message || err}`);
       console.error("[handleGenerateSchedule] error:", err);
     }
   };
@@ -148,7 +407,7 @@ function TournamentDetailPage() {
       setTournament(updatedTournament);
       setOpenRounds({});
     } catch (err) {
-      alert(`Error: ${err.message}`);
+      alert(`Error: ${err.message || err}`);
     }
   };
 
@@ -178,15 +437,12 @@ function TournamentDetailPage() {
       closeModal();
     } catch (err) {
       console.error("Error updating score:", err);
-      alert(`Error: ${err.message}`);
+      alert(`Error: ${err.message || err}`);
     }
   };
 
   const toggleRound = (roundKey) => {
-    setOpenRounds((prev) => ({
-      ...prev,
-      [roundKey]: !prev[roundKey],
-    }));
+    setOpenRounds((prev) => ({ ...prev, [roundKey]: !prev[roundKey] }));
   };
 
   const handleAdvanceWinners = async () => {
@@ -204,7 +460,7 @@ function TournamentDetailPage() {
       setTournament(updatedTournament);
       setActiveTab("overview");
     } catch (err) {
-      alert(`Error: ${err.message}`);
+      alert(`Error: ${err.message || err}`);
     }
   };
 
@@ -506,8 +762,7 @@ function TournamentDetailPage() {
                                     onClick={() => openModal(match)}
                                     className="text-xs text-indigo-300 hover:text-indigo-200 font-medium flex items-center justify-center mx-auto gap-2 bg-indigo-600/20 hover:bg-indigo-600/30 px-4 py-2 rounded-lg border border-indigo-500/30 transition-all"
                                   >
-                                    <FaEdit />
-                                    Update Score
+                                    <FaEdit /> Update Score
                                   </button>
                                 </div>
                               </div>
@@ -568,8 +823,7 @@ function TournamentDetailPage() {
                 onClick={handleAdvanceWinners}
                 className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-bold py-4 px-8 rounded-2xl text-lg flex items-center justify-center mx-auto gap-3 shadow-xl hover:shadow-2xl transition-all transform hover:scale-105"
               >
-                <FaTrophy className="text-xl" />
-                Advance to Knockout Stage
+                <FaTrophy className="text-xl" /> Advance to Knockout Stage{" "}
                 <FaArrowRight className="text-xl" />
               </button>
             </div>
@@ -582,8 +836,7 @@ function TournamentDetailPage() {
           {isLeagueOnly && (
             <div className="bg-gradient-to-br from-white/5 to-white/10 backdrop-blur-sm border border-white/10 p-6 rounded-2xl shadow-xl">
               <h3 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
-                <FaChartBar className="text-pink-400" />
-                Tournament Stats
+                <FaChartBar className="text-pink-400" /> Tournament Stats
               </h3>
               <TournamentStats
                 participants={tournament.participants}
