@@ -1,39 +1,61 @@
-require("dotenv").config();
-const express = require("express");
-const cors = require("cors");
-const mongoose = require("mongoose");
+// server.js
+import dotenv from "dotenv";
+import express from "express";
+import mongoose from "mongoose";
+import cors from "cors";
 
+dotenv.config();
 const app = express();
-// Render will automatically assign a port to process.env.PORT
-const PORT = process.env.PORT || 3000;
 
-// --- Middleware ---
-// In production, we will set CLIENT_URL in Render's environment variables.
-// For now, '*' allows access from anywhere (useful for initial testing).
+// ---------- CONFIG ----------
+const PORT = process.env.PORT || 3000;
+const MONGO_URI = process.env.MONGO_URI;
+
+// Allowed frontend origins
+const allowedOrigins = [
+  "https://tournamate-frontend.vercel.app", // deployed frontend
+  "http://localhost:5173"                   // dev frontend
+];
+
+// ---------- MIDDLEWARE ----------
 app.use(
   cors({
-    origin: process.env.CLIENT_URL || "*",
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        console.error("Blocked by CORS:", origin);
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true,
   })
 );
+
 app.use(express.json());
 
-// --- Database Connection ---
+// ---------- DATABASE ----------
 mongoose
-  .connect(process.env.MONGO_URI)
-  .then(() => console.log("MongoDB connected successfully"))
-  .catch((err) => console.error("MongoDB connection error: ", err));
+  .connect(MONGO_URI)
+  .then(() => console.log("✅ MongoDB connected"))
+  .catch((err) => console.error("❌ MongoDB connection error:", err));
 
-// --- Health Check Route (Important for Render) ---
+// ---------- ROUTES ----------
 app.get("/", (req, res) => {
-  res.send("TournaMate Backend is active! 🚀");
+  res.send("TournaMate Backend is Active 🚀");
 });
 
-// --- Routes ---
-app.use("/api/tournaments", require("./routes/tournaments"));
-app.use("/api/auth", require("./routes/auth"));
-
-// --- Server Start ---
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+app.get("/api/health", (req, res) => {
+  res.json({ status: "ok" });
 });
+
+// Example routes (replace with your real ones)
+import authRoutes from "./routes/auth.js";
+import tournamentRoutes from "./routes/tournaments.js";
+app.use("/api/auth", authRoutes);
+app.use("/api/tournaments", tournamentRoutes);
+
+// ---------- SERVER ----------
+app.listen(PORT, () => console.log(`🟢 Server running on port ${PORT}`));
