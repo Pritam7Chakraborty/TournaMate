@@ -8,7 +8,7 @@ dotenv.config();
 const app = express();
 
 // ---------- CONFIG ----------
-const PORT = process.env.PORT ;
+const PORT = process.env.PORT || 3000;
 const MONGO_URI = process.env.MONGO_URI;
 
 // Allowed frontend origins
